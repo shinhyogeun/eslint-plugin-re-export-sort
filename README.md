@@ -1,6 +1,8 @@
 # eslint-plugin-re-export-sort
 
-💫 this plugin is for sorting re-export 💫
+💫 Plugin for sorting re-export 💫 <br/>
+⚠️ This plugin does not apply to export statements that are not re-export. ⚠️ <br/>
+⚠️ Also, plugin does not sort export specifiers in re-export statements. ⚠️
 
 ## Example
 
@@ -78,22 +80,24 @@ Then configure the rules you want to use under the rules section.
 
 ## Sort order
 
-**First group, then sort alphabetically.** By default, the group order provided is `Type-Re-Export` first, followed by `ExportAllDeclaration`, followed by `ExportNamedDeclaration`.
+**First group, then sort alphabetically.**
+<br/>
+The default group order is `Type-Re-Export` first , followed by `ExportAllDeclaration`, and `ExportNamedDeclaration` last.
 
 - `Type-Re-Export`=> `export type { typeSpecifier } from 'source';`
 - `ExportAllDeclaration` => `export * from 'source';`
 - `ExportNamedDeclaration` => `export { specifier } from 'source';`
 
-**Once the grouping is finished, you will sort within each group in alphabetical order of the source part after from.**
+**Once grouping finished, then source part(string after `from`) within each group will be sorted in alphabetical order.**
 
 ## Rules
 
 <!-- begin auto-generated rules list -->
 
-Currently, custom rules are not available. We plan to provide detailed settings within the rule in the near future.
+Currently, custom rules are not available. We plan to provide detailed settings within the rule ASAP..😂
 
-1. Options for adding spaces between groups
-2. Options for custom order about the group order
+1. Options for adding spaces between groups.
+2. Options for custom group order.
 <!-- end auto-generated rules list -->
 
 ## License
