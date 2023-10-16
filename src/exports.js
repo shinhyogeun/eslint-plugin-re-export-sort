@@ -13,7 +13,7 @@ module.exports = {
     fixable: "code",
     schema: [],
     docs: {
-      url: "not yet",
+      url: "https://github.com/shinhyogeun/eslint-plugin-re-export-sort#sort-order",
     },
     messages: {
       sort: "Please run autofix to sort re-exports!",
