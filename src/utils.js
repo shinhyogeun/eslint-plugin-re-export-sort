@@ -67,7 +67,7 @@ function stringifySortedItems(sortedItems, originalItems, sourceCode) {
     )
     .join(newline + newline);
 
-  // Edge case: If the last import/export (after sorting) ends with a line
+  // Edge case: If the last export (after sorting) ends with a line
   // comment and there’s code (or a multiline block comment) on the same line,
   // add a newline so we don’t accidentally comment stuff out.
   /**
@@ -376,7 +376,7 @@ function getTrailingSpaces(node, sourceCode) {
   return lines[0];
 }
 
-function sortImportExportItems(items) {
+function sortExportItems(items) {
   return items.slice().sort((itemA, itemB) =>
     // If both items are side effect imports, keep their original order.
     itemA.isSideEffectImport && itemB.isSideEffectImport
@@ -475,5 +475,5 @@ module.exports = {
   getExportItems,
   replace,
   stringifySortedItems,
-  sortImportExportItems,
+  sortExportItems,
 };

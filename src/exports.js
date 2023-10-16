@@ -56,7 +56,7 @@ function maybeReportChunkSorting(chunk, context) {
   const items = utils.getExportItems(chunk, sourceCode, () => false);
 
   // 여기서 items 순서를 *, {}, type을 내가 이쁘게 만들자..!
-  const sortedItems = [[utils.sortImportExportItems(items)]];
+  const sortedItems = [[utils.sortExportItems(items)]];
   const sorted = utils.stringifySortedItems(sortedItems, items, sourceCode);
   const { start } = items[0];
   const { end } = items[items.length - 1];
