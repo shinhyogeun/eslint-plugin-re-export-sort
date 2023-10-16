@@ -106,12 +106,7 @@ function stringifySortedItems(sortedItems, originalItems, sourceCode) {
   return sorted + maybeNewline;
 }
 
-function getExportItems(
-  passedChunk,
-  sourceCode,
-  isSideEffectImport,
-  getSpecifiers
-) {
+function getExportItems(passedChunk, sourceCode, isSideEffectImport) {
   const chunk = handleLastSemicolon(passedChunk, sourceCode);
 
   return chunk.map((node, nodeIndex) => {
@@ -165,7 +160,7 @@ function getExportItems(
     const code =
       indentation +
       before +
-      printWithSortedSpecifiers(node, sourceCode, getSpecifiers) +
+      printTokens(getAllTokens(node, sourceCode)) +
       after +
       trailingSpaces;
 
@@ -238,344 +233,7 @@ function handleLastSemicolon(chunk, sourceCode) {
   return chunk.slice(0, lastIndex).concat(newLastNode);
 }
 
-function printWithSortedSpecifiers(node, sourceCode, getSpecifiers) {
-  const allTokens = getAllTokens(node, sourceCode);
-
-  const openBraceIndex = allTokens.findIndex((token) =>
-    isPunctuator(token, "{")
-  );
-  const closeBraceIndex = allTokens.findIndex((token) =>
-    isPunctuator(token, "}")
-  );
-
-  const specifiers = getSpecifiers(node);
-
-  if (
-    openBraceIndex === -1 ||
-    closeBraceIndex === -1 ||
-    specifiers.length <= 1
-  ) {
-    return printTokens(allTokens);
-  }
-
-  const specifierTokens = allTokens.slice(openBraceIndex + 1, closeBraceIndex);
-
-  const itemsResult = getSpecifierItems(specifierTokens, sourceCode);
-
-  const items = itemsResult.items.map((originalItem, index) => ({
-    ...originalItem,
-    node: specifiers[index],
-  }));
-
-  const sortedItems = sortSpecifierItems(items);
-
-  const newline = guessNewline(sourceCode);
-
-  // `allTokens[closeBraceIndex - 1]` wouldn’t work because `allTokens` contains
-  // comments and whitespace.
-  const hasTrailingComma = isPunctuator(
-    sourceCode.getTokenBefore(allTokens[closeBraceIndex]),
-    ","
-  );
-
-  const lastIndex = sortedItems.length - 1;
-
-  const sorted = flatMap(sortedItems, (item, index) => {
-    const previous = index === 0 ? undefined : sortedItems[index - 1];
-
-    // Add a newline if the item needs one, unless the previous item (if any)
-    // already ends with a newline.
-    const maybeNewline =
-      previous != null &&
-      needsStartingNewline(item.before) &&
-      !(
-        previous.after.length > 0 &&
-        isNewline(previous.after[previous.after.length - 1])
-      )
-        ? [{ type: "Newline", code: newline }]
-        : [];
-
-    if (index < lastIndex || hasTrailingComma) {
-      return [
-        ...maybeNewline,
-        ...item.before,
-        ...item.specifier,
-        { type: "Comma", code: "," },
-        ...item.after,
-      ];
-    }
-
-    const nonBlankIndex = item.after.findIndex(
-      (token) => !isNewline(token) && !isSpaces(token)
-    );
-
-    // Remove whitespace and newlines at the start of `.after` if the item had a
-    // comma before, but now hasn’t to avoid blank lines and excessive
-    // whitespace before `}`.
-    const after = !item.hadComma
-      ? item.after
-      : nonBlankIndex === -1
-      ? []
-      : item.after.slice(nonBlankIndex);
-
-    return [...maybeNewline, ...item.before, ...item.specifier, ...after];
-  });
-
-  const maybeNewline =
-    needsStartingNewline(itemsResult.after) &&
-    !isNewline(sorted[sorted.length - 1])
-      ? [{ type: "Newline", code: newline }]
-      : [];
-
-  return printTokens([
-    ...allTokens.slice(0, openBraceIndex + 1),
-    ...itemsResult.before,
-    ...sorted,
-    ...maybeNewline,
-    ...itemsResult.after,
-    ...allTokens.slice(closeBraceIndex),
-  ]);
-}
-
-// Turns a list of tokens between the `{` and `}` of an import/export specifiers
-// list into an object with the following properties:
-//
-// - before: Array of tokens – whitespace and comments after the `{` that do not
-//   belong to any specifier.
-// - after: Array of tokens – whitespace and comments before the `}` that do not
-//   belong to any specifier.
-// - items: Array of specifier items.
-//
-// Each specifier item looks like this:
-//
-// - before: Array of tokens – whitespace and comments before the specifier.
-// - after: Array of tokens – whitespace and comments after the specifier.
-// - specifier: Array of tokens – identifiers, whitespace and comments of the
-//   specifier.
-// - hadComma: A Boolean representing if the specifier had a comma originally.
-//
-// We have to do carefully preserve all original whitespace this way in order to
-// be compatible with other stylistic ESLint rules.
-function getSpecifierItems(tokens) {
-  const result = {
-    before: [],
-    after: [],
-    items: [],
-  };
-
-  let current = makeEmptyItem();
-
-  for (const token of tokens) {
-    switch (current.state) {
-      case "before":
-        switch (token.type) {
-          case "Newline":
-            current.before.push(token);
-
-            // All whitespace and comments before the first newline or
-            // identifier belong to the `{`, not the first specifier.
-            if (result.before.length === 0 && result.items.length === 0) {
-              result.before = current.before;
-              current = makeEmptyItem();
-            }
-            break;
-
-          case "Spaces":
-          case "Block":
-          case "Line":
-            current.before.push(token);
-            break;
-
-          // We’ve reached an identifier.
-          default:
-            // All whitespace and comments before the first newline or
-            // identifier belong to the `{`, not the first specifier.
-            if (result.before.length === 0 && result.items.length === 0) {
-              result.before = current.before;
-              current = makeEmptyItem();
-            }
-
-            current.state = "specifier";
-            current.specifier.push(token);
-        }
-        break;
-
-      case "specifier":
-        switch (token.type) {
-          case "Punctuator":
-            // There can only be comma punctuators, but future-proof by checking.
-            // istanbul ignore else
-            if (isPunctuator(token, ",")) {
-              current.hadComma = true;
-              current.state = "after";
-            } else {
-              current.specifier.push(token);
-            }
-            break;
-
-          // When consuming the specifier part, we eat every token until a comma
-          // or to the end, basically.
-          default:
-            current.specifier.push(token);
-        }
-        break;
-
-      case "after":
-        switch (token.type) {
-          // Only whitespace and comments after a specifier that are on the same
-          // belong to the specifier.
-          case "Newline":
-            current.after.push(token);
-            result.items.push(current);
-            current = makeEmptyItem();
-            break;
-
-          case "Spaces":
-          case "Line":
-            current.after.push(token);
-            break;
-
-          case "Block":
-            // Multiline block comments belong to the next specifier.
-            if (hasNewline(token.code)) {
-              result.items.push(current);
-              current = makeEmptyItem();
-              current.before.push(token);
-            } else {
-              current.after.push(token);
-            }
-            break;
-
-          // We’ve reached another specifier – time to process that one.
-          default:
-            result.items.push(current);
-            current = makeEmptyItem();
-            current.state = "specifier";
-            current.specifier.push(token);
-        }
-        break;
-
-      // istanbul ignore next
-      default:
-        throw new Error(`Unknown state: ${current.state}`);
-    }
-  }
-
-  // We’ve reached the end of the tokens. Handle what’s currently in `current`.
-  switch (current.state) {
-    // If the last specifier has a trailing comma and some of the remaining
-    // whitespace and comments are on the same line we end up here. If so we
-    // want to put that whitespace and comments in `result.after`.
-    case "before":
-      result.after = current.before;
-      break;
-
-    // If the last specifier has no trailing comma we end up here. Move all
-    // trailing comments and whitespace from `.specifier` to `.after`, and
-    // comments and whitespace that don’t belong to the specifier to
-    // `result.after`. The last non-comment and non-whitespace token is usually
-    // an identifier, but in this case it’s a keyword:
-    //
-    //    export { z, d as default } from "a"
-    case "specifier": {
-      const lastIdentifierIndex = findLastIndex(
-        current.specifier,
-        (token2) => isIdentifier(token2) || isKeyword(token2)
-      );
-
-      const specifier = current.specifier.slice(0, lastIdentifierIndex + 1);
-      const after = current.specifier.slice(lastIdentifierIndex + 1);
-
-      // If there’s a newline, put everything up to and including (hence the `+
-      // 1`) that newline in the specifiers’s `.after`.
-      const newlineIndexRaw = after.findIndex((token2) => isNewline(token2));
-      const newlineIndex = newlineIndexRaw === -1 ? -1 : newlineIndexRaw + 1;
-
-      // If there’s a multiline block comment, put everything _befor_ that
-      // comment in the specifiers’s `.after`.
-      const multilineBlockCommentIndex = after.findIndex(
-        (token2) => isBlockComment(token2) && hasNewline(token2.code)
-      );
-
-      const sliceIndex =
-        // If both a newline and a multiline block comment exists, choose the
-        // earlier one.
-        newlineIndex >= 0 && multilineBlockCommentIndex >= 0
-          ? Math.min(newlineIndex, multilineBlockCommentIndex)
-          : newlineIndex >= 0
-          ? newlineIndex
-          : multilineBlockCommentIndex >= 0
-          ? multilineBlockCommentIndex
-          : // If there are no newlines, move the last whitespace into `result.after`.
-          endsWithSpaces(after)
-          ? after.length - 1
-          : -1;
-
-      current.specifier = specifier;
-      current.after = sliceIndex === -1 ? after : after.slice(0, sliceIndex);
-      result.items.push(current);
-      result.after = sliceIndex === -1 ? [] : after.slice(sliceIndex);
-
-      break;
-    }
-
-    // If the last specifier has a trailing comma and all remaining whitespace
-    // and comments are on the same line we end up here. If so we want to move
-    // the final whitespace to `result.after`.
-    case "after":
-      if (endsWithSpaces(current.after)) {
-        const last = current.after.pop();
-        result.after = [last];
-      }
-      result.items.push(current);
-      break;
-
-    // istanbul ignore next
-    default:
-      throw new Error(`Unknown state: ${current.state}`);
-  }
-
-  return result;
-}
-
-function makeEmptyItem() {
-  return {
-    // "before" | "specifier" | "after"
-    state: "before",
-    before: [],
-    after: [],
-    specifier: [],
-    hadComma: false,
-  };
-}
-
-// If a specifier item starts with a line comment or a singleline block comment
-// it needs a newline before that. Otherwise that comment can end up belonging
-// to the _previous_ specifier after sorting.
-function needsStartingNewline(tokens) {
-  const before = tokens.filter((token) => !isSpaces(token));
-
-  if (before.length === 0) {
-    return false;
-  }
-
-  const firstToken = before[0];
-  return (
-    isLineComment(firstToken) ||
-    (isBlockComment(firstToken) && !hasNewline(firstToken.code))
-  );
-}
-
-function endsWithSpaces(tokens) {
-  const last = tokens.length > 0 ? tokens[tokens.length - 1] : undefined;
-  return last == null ? false : isSpaces(last);
-}
-
 const NEWLINE = /(\r?\n)/;
-
-function hasNewline(string) {
-  return NEWLINE.test(string);
-}
 
 function guessNewline(sourceCode) {
   const match = NEWLINE.exec(sourceCode.text);
@@ -744,37 +402,6 @@ function sortImportExportItems(items) {
   );
 }
 
-function sortSpecifierItems(items) {
-  return items.slice().sort(
-    (itemA, itemB) =>
-      // Compare by imported or exported name (external interface name).
-      // import { a as b } from "a"
-      //          ^
-      // export { b as a }
-      //               ^
-      compare(
-        (itemA.node.imported || itemA.node.exported).name,
-        (itemB.node.imported || itemB.node.exported).name
-      ) ||
-      // Then compare by the file-local name.
-      // import { a as b } from "a"
-      //               ^
-      // export { b as a }
-      //          ^
-      compare(itemA.node.local.name, itemB.node.local.name) ||
-      // Then put type specifiers before regular ones.
-      compare(
-        getImportExportKind(itemA.node),
-        getImportExportKind(itemB.node)
-      ) ||
-      // Keep the original order if the names are the same. It’s not worth
-      // trying to compare anything else, `import {a, a} from "mod"` is a syntax
-      // error anyway (but @babel/eslint-parser kind of supports it).
-      // istanbul ignore next
-      itemA.index - itemB.index
-  );
-}
-
 const collator = new Intl.Collator("en", {
   sensitivity: "base",
   numeric: true,
@@ -782,14 +409,6 @@ const collator = new Intl.Collator("en", {
 
 function compare(a, b) {
   return collator.compare(a, b) || (a < b ? -1 : a > b ? 1 : 0);
-}
-
-function isIdentifier(node) {
-  return node.type === "Identifier";
-}
-
-function isKeyword(node) {
-  return node.type === "Keyword";
 }
 
 function isPunctuator(node, value) {
@@ -802,14 +421,6 @@ function isBlockComment(node) {
 
 function isLineComment(node) {
   return node.type === "Line";
-}
-
-function isSpaces(node) {
-  return node.type === "Spaces";
-}
-
-function isNewline(node) {
-  return node.type === "Newline";
 }
 
 function getSource(node) {
@@ -852,18 +463,6 @@ function getImportExportKind(node) {
   // to "value" (like TypeScript) to make regular imports/exports come after the
   // type imports/exports.
   return node.importKind || node.exportKind || "value";
-}
-
-// Like `Array.prototype.findIndex`, but searches from the end.
-function findLastIndex(array, fn) {
-  for (let index = array.length - 1; index >= 0; index--) {
-    if (fn(array[index], index, array)) {
-      return index;
-    }
-  }
-  // There are currently no usages of `findLastIndex` where nothing is found.
-  // istanbul ignore next
-  return -1;
 }
 
 // Like `Array.prototype.flatMap`, had it been available.

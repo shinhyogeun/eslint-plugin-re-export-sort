@@ -14,10 +14,10 @@ var ruleTester = new RuleTester();
 ruleTester.run("re-export", plugin.rules.exports, {
   valid: [
     `
+        export * from './A';
         export * from './D';
         export * from './E';
         export * from './F';        
-        export { default as AItem } from './A';
         export { default as BItem } from './B';
         export { default as CItem } from './C';  
     `,

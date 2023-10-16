@@ -53,12 +53,7 @@ module.exports = {
 function maybeReportChunkSorting(chunk, context) {
   const sourceCode = context.getSourceCode();
 
-  const items = utils.getExportItems(
-    chunk,
-    sourceCode,
-    () => false,
-    getSpecifiers
-  );
+  const items = utils.getExportItems(chunk, sourceCode, () => false);
 
   // 여기서 items 순서를 *, {}, type을 내가 이쁘게 만들자..!
   const sortedItems = [[utils.sortImportExportItems(items)]];
@@ -66,11 +61,6 @@ function maybeReportChunkSorting(chunk, context) {
   const { start } = items[0];
   const { end } = items[items.length - 1];
   utils.replace(context, sorted, start, end);
-}
-
-// in `export { a } from "./a"`, specifiers is in between brace.
-function getSpecifiers(exportNode) {
-  return exportNode.specifiers || [];
 }
 
 function isPartOfChunk(node) {
