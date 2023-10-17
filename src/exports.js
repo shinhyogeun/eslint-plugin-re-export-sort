@@ -11,7 +11,17 @@ module.exports = {
   meta: {
     type: "layout",
     fixable: "code",
-    schema: [],
+    schema: [
+      {
+        type: "object",
+        properties: {
+          spaceBetweenGroup: {
+            type: "boolean",
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
     docs: {
       url: "https://github.com/shinhyogeun/eslint-plugin-re-export-sort#sort-order",
     },
@@ -20,6 +30,8 @@ module.exports = {
     },
   },
   create: (context) => {
+    const { spaceBetweenGroup = true } = context.options[0] || {};
+
     const parents = new Set();
 
     const addParent = (node) => {
@@ -41,7 +53,7 @@ module.exports = {
           for (const chunk of utils.extractChunks(parent, (node) =>
             isPartOfChunk(node)
           )) {
-            maybeReportChunkSorting(chunk, context);
+            maybeReportChunkSorting(chunk, context, spaceBetweenGroup);
           }
         }
         parents.clear();
@@ -50,13 +62,18 @@ module.exports = {
   },
 };
 
-function maybeReportChunkSorting(chunk, context) {
+function maybeReportChunkSorting(chunk, context, spaceBetweenGroup) {
   const sourceCode = context.getSourceCode();
 
   const items = utils.getExportItems(chunk, sourceCode, () => false);
 
   // 여기서 items 순서를 *, {}, type을 내가 이쁘게 만들자..!
-  const sortedItems = [[utils.sortExportItems(items)]];
+  const rawSortedItems = utils.sortExportItems(items);
+
+  const sortedItems = spaceBetweenGroup
+    ? utils.spliceItems(rawSortedItems)
+    : [[rawSortedItems]];
+
   const sorted = utils.stringifySortedItems(sortedItems, items, sourceCode);
   const { start } = items[0];
   const { end } = items[items.length - 1];

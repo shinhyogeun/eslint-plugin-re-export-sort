@@ -1,5 +1,30 @@
 "use strict";
 
+function spliceItems(items) {
+  let itemsArr = [];
+  let tempArr = [];
+
+  items.forEach((item, itemIndex) => {
+    if (itemIndex === 0) {
+      tempArr.push(item);
+    } else {
+      if (
+        item.source.kind === items[itemIndex - 1].source.kind &&
+        item.node.type === items[itemIndex - 1].node.type
+      ) {
+        tempArr.push(item);
+      } else {
+        itemsArr.push([[...tempArr]]);
+        tempArr = [item];
+      }
+    }
+  });
+
+  itemsArr.push([[...tempArr]]);
+
+  return itemsArr;
+}
+
 function extractChunks(parentNode, isPartOfChunk) {
   const chunks = [];
   let chunk = [];
@@ -471,6 +496,7 @@ function flatMap(array, fn) {
 }
 
 module.exports = {
+  spliceItems,
   extractChunks,
   getExportItems,
   replace,
