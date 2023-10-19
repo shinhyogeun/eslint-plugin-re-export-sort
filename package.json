@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-re-export-sort",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "license": "MIT",
   "author": "shinhyogeun",
   "type": "commonjs",
