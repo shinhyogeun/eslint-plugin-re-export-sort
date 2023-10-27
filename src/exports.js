@@ -30,7 +30,8 @@ module.exports = {
     },
   },
   create: (context) => {
-    const { spaceBetweenGroup = true } = context.options[0] || {};
+    const { spaceBetweenGroup = true, order = utils.DEFAULT_ORDER } =
+      context.options[0] || {};
 
     const parents = new Set();
 
@@ -53,7 +54,12 @@ module.exports = {
           for (const chunk of utils.extractChunks(parent, (node) =>
             isPartOfChunk(node)
           )) {
-            maybeReportChunkSorting(chunk, context, spaceBetweenGroup);
+            maybeReportChunkSorting(
+              chunk,
+              context,
+              spaceBetweenGroup,
+              utils.checkValidOrder(order)
+            );
           }
         }
         parents.clear();
@@ -62,13 +68,12 @@ module.exports = {
   },
 };
 
-function maybeReportChunkSorting(chunk, context, spaceBetweenGroup) {
+function maybeReportChunkSorting(chunk, context, spaceBetweenGroup, order) {
   const sourceCode = context.getSourceCode();
 
   const items = utils.getExportItems(chunk, sourceCode, () => false);
 
-  // 여기서 items 순서를 *, {}, type을 내가 이쁘게 만들자..!
-  const rawSortedItems = utils.sortExportItems(items);
+  const rawSortedItems = utils.sortExportItems(items, order);
 
   const sortedItems = spaceBetweenGroup
     ? utils.spliceItems(rawSortedItems)

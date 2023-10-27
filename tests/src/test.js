@@ -14,13 +14,13 @@ var ruleTester = new RuleTester();
 ruleTester.run("re-export", plugin.rules.exports, {
   valid: [
     `
+        export { default as BItem } from './B';
+        export { default as CItem } from './C';
+
         export * from './A';
         export * from './D';
         export * from './E';
         export * from './F';
-
-        export { default as BItem } from './B';
-        export { default as CItem } from './C';
     `,
   ],
   invalid: [],
@@ -29,19 +29,6 @@ ruleTester.run("re-export", plugin.rules.exports, {
 ruleTester.run("re-export2", plugin.rules.exports, {
   valid: [
     `
-    export * from "./List";
-    export * from "./ListItem";
-    export * from "./ListItemAvatar";
-    export * from "./ListItemButton";
-    export * from "./ListItemIcon";
-    export * from "./ListItemSecondaryAction";
-    export * from "./ListItemText";
-    export * from "./ListSubheader";
-    export * from "./ListView";
-    export * from "./Menu";
-    export * from "./MenuItem";
-    export * from "./TransferList";
-
     export { default as List } from "./List";
     export { default as ListItem } from "./ListItem";
     export { default as ListItemAvatar } from "./ListItemAvatar";
@@ -54,6 +41,19 @@ ruleTester.run("re-export2", plugin.rules.exports, {
     export { default as Menu } from "./Menu";
     export { default as MenuItem } from "./MenuItem";
     export { default as TransferList } from "./TransferList";
+
+    export * from "./List";
+    export * from "./ListItem";
+    export * from "./ListItemAvatar";
+    export * from "./ListItemButton";
+    export * from "./ListItemIcon";
+    export * from "./ListItemSecondaryAction";
+    export * from "./ListItemText";
+    export * from "./ListSubheader";
+    export * from "./ListView";
+    export * from "./Menu";
+    export * from "./MenuItem";
+    export * from "./TransferList";
     `,
   ],
   invalid: [],

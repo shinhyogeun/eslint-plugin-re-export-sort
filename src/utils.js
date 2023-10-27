@@ -1,5 +1,7 @@
 "use strict";
 
+const DEFAULT_ORDER = ["type", "name", "all"];
+
 function spliceItems(items) {
   let itemsArr = [];
   let tempArr = [];
@@ -401,19 +403,44 @@ function getTrailingSpaces(node, sourceCode) {
   return lines[0];
 }
 
-function sortExportItems(items) {
-  return items.slice().sort((itemA, itemB) =>
+const sortBasedOnOrder = (itemA, itemB, order) => {
+  const [first, second] = order;
+  const orderMap = {
+    type: compare(itemA.source.kind, itemB.source.kind),
+    all: compare(itemA.node.type, itemB.node.type),
+    name: -compare(itemA.node.type, itemB.node.type),
+  };
+
+  return orderMap[first] || orderMap[second];
+};
+
+const checkValidOrder = (order) => {
+  if (!Array.isArray(order) || order.length !== 3) {
+    return DEFAULT_ORDER;
+  }
+
+  for (let i = 0; i < order.length; i++) {
+    if (!DEFAULT_ORDER.includes(order[i]) || order.indexOf(order[i]) !== i) {
+      return DEFAULT_ORDER;
+    }
+  }
+
+  return order;
+};
+
+function sortExportItems(items, order) {
+  console.log("order");
+  return items.slice().sort((itemA, itemB) => {
+    console.log(order);
     // If both items are side effect imports, keep their original order.
-    itemA.isSideEffectImport && itemB.isSideEffectImport
+    return itemA.isSideEffectImport && itemB.isSideEffectImport
       ? itemA.index - itemB.index
       : // If one of the items is a side effect import, move it first.
       itemA.isSideEffectImport
       ? -1
       : itemB.isSideEffectImport
       ? 1
-      : // Then put type imports/exports before regular ones.
-        compare(itemA.source.kind, itemB.source.kind) ||
-        compare(itemA.node.type, itemB.node.type) ||
+      : sortBasedOnOrder(itemA, itemB, order) ||
         // Compare the `from` part.
         compare(itemA.source.source, itemB.source.source) ||
         // The `.source` has been slightly tweaked. To stay fully deterministic,
@@ -423,8 +450,8 @@ function sortExportItems(items) {
         // Keep the original order if the sources are the same. It’s not worth
         // trying to compare anything else, and you can use `import/no-duplicates`
         // to get rid of the problem anyway.
-        itemA.index - itemB.index
-  );
+        itemA.index - itemB.index;
+  });
 }
 
 const collator = new Intl.Collator("en", {
@@ -496,8 +523,10 @@ function flatMap(array, fn) {
 }
 
 module.exports = {
+  DEFAULT_ORDER,
   spliceItems,
   extractChunks,
+  checkValidOrder,
   getExportItems,
   replace,
   stringifySortedItems,
