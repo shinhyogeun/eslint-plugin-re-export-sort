@@ -83,13 +83,13 @@ Then configure the rules you want to use under the rules section.
 
 **First group, then sort alphabetically.**
 <br/>
-The default group order is `Type-Re-Export` first , followed by `ExportAllDeclaration`, and `ExportNamedDeclaration` last.
+The default group order is `TypeReExport` first , followed by `ExportAllDeclaration`, and `ExportNamedDeclaration` last.
 
-- `Type-Re-Export`=> `export type { typeSpecifier } from 'source';`
+- `TypeReExport`=> `export type { typeSpecifier } from 'source';`
 - `ExportAllDeclaration` => `export * from 'source';`
 - `ExportNamedDeclaration` => `export { specifier } from 'source';`
 
-**Once grouping finished, then source part(string after `from`) within each group will be sorted in alphabetical order.**
+**Once grouping finished, then source part(string after `from`) within each group will be sorted alphabetically.**
 
 ## Options
 
@@ -100,16 +100,20 @@ The default group order is `Type-Re-Export` first , followed by `ExportAllDeclar
 ```json
 {
   "rules": {
-    "re-export-sort/exports": ["error", {
-    	"spaceBetweenGroup" : true | false (default true)
-    }]
+    "re-export-sort/exports": [
+      "error",
+      {
+        "spaceBetweenGroup": "boolean"
+      }
+    ]
   }
 }
 ```
 
 if spaceBetweenGroup is `false`, `/n` between group are not injected.
+default value is `true`
 
----
+<br/>
 
 **if set true (default)**
 
@@ -135,7 +139,7 @@ export { default as List } from "./List";
 export { default as ListItem } from "./ListItem";
 ```
 
----
+<br/>
 
 **if set false**
 
@@ -159,7 +163,82 @@ export { default as List } from "./List";
 export { default as ListItem } from "./ListItem";
 ```
 
-**Currently, options for custom group order are not available. We plan to provide detailed setting within the rule ASAP..😂**
+---
+
+### order
+
+```json
+{
+  "rules": {
+    "re-export-sort/exports": [
+      "error",
+      {
+        "order": ["type", "all", "name"]
+      }
+    ]
+  }
+}
+```
+
+The order option allows you to customize the sort order. The default is `["type", "all", "name"]`.
+
+**example**
+
+- `type`=> `export type { typeSpecifier } from 'source';`
+- `all` => `export * from 'source';`
+- `name` => `export { specifier } from 'source';`
+
+<br />
+
+**if set ["all", "name", "type"]**
+
+```ts
+export * from "./List";
+export type { ListProps } from "./List";
+export { default as List } from "./List";
+export * from "./ListItem";
+export type { ListItemProps } from "./ListItem";
+export { default as ListItem } from "./ListItem";
+```
+
+⬇️
+
+```ts
+export * from "./List";
+export * from "./ListItem";
+
+export { default as List } from "./List";
+export { default as ListItem } from "./ListItem";
+
+export type { ListProps } from "./List";
+export type { ListItemProps } from "./ListItem";
+```
+
+<br />
+
+**if set ["all", "type", "name"]**
+
+```ts
+export * from "./List";
+export type { ListProps } from "./List";
+export { default as List } from "./List";
+export * from "./ListItem";
+export type { ListItemProps } from "./ListItem";
+export { default as ListItem } from "./ListItem";
+```
+
+⬇️
+
+```ts
+export * from "./List";
+export * from "./ListItem";
+
+export type { ListProps } from "./List";
+export type { ListItemProps } from "./ListItem";
+
+export { default as List } from "./List";
+export { default as ListItem } from "./ListItem";
+```
 
 <!-- end auto-generated rules list -->
 
