@@ -18,6 +18,9 @@ module.exports = {
           spaceBetweenGroup: {
             type: "boolean",
           },
+          order: {
+            type: "array",
+          },
         },
         additionalProperties: false,
       },
