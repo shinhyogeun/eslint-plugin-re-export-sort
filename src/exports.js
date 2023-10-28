@@ -20,6 +20,9 @@ module.exports = {
           },
           order: {
             type: "array",
+            items: {
+              type: "string",
+            },
           },
         },
         additionalProperties: false,

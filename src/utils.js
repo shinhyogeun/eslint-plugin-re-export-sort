@@ -1,6 +1,6 @@
 "use strict";
 
-const DEFAULT_ORDER = ["type", "name", "all"];
+const DEFAULT_ORDER = ["type", "all", "name"];
 
 function spliceItems(items) {
   let itemsArr = [];
@@ -13,6 +13,11 @@ function spliceItems(items) {
       if (
         item.source.kind === items[itemIndex - 1].source.kind &&
         item.node.type === items[itemIndex - 1].node.type
+      ) {
+        tempArr.push(item);
+      } else if (
+        item.source.kind === items[itemIndex - 1].source.kind &&
+        item.source.kind === "type"
       ) {
         tempArr.push(item);
       } else {
@@ -405,10 +410,14 @@ function getTrailingSpaces(node, sourceCode) {
 
 const sortBasedOnOrder = (itemA, itemB, order) => {
   const [first, second] = order;
+
   const orderMap = {
     type: compare(itemA.source.kind, itemB.source.kind),
     all: compare(itemA.node.type, itemB.node.type),
-    name: -compare(itemA.node.type, itemB.node.type),
+    name: -compare(
+      itemA.source.isNameAndNotType,
+      itemB.source.isNameAndNotType
+    ),
   };
 
   return orderMap[first] || orderMap[second];
@@ -429,29 +438,41 @@ const checkValidOrder = (order) => {
 };
 
 function sortExportItems(items, order) {
-  console.log("order");
-  return items.slice().sort((itemA, itemB) => {
-    console.log(order);
-    // If both items are side effect imports, keep their original order.
-    return itemA.isSideEffectImport && itemB.isSideEffectImport
-      ? itemA.index - itemB.index
-      : // If one of the items is a side effect import, move it first.
-      itemA.isSideEffectImport
-      ? -1
-      : itemB.isSideEffectImport
-      ? 1
-      : sortBasedOnOrder(itemA, itemB, order) ||
-        // Compare the `from` part.
-        compare(itemA.source.source, itemB.source.source) ||
-        // The `.source` has been slightly tweaked. To stay fully deterministic,
-        // also sort on the original value.
-        compare(itemA.source.originalSource, itemB.source.originalSource) ||
-        // itemA.||
-        // Keep the original order if the sources are the same. It’s not worth
-        // trying to compare anything else, and you can use `import/no-duplicates`
-        // to get rid of the problem anyway.
-        itemA.index - itemB.index;
-  });
+  return items
+    .slice()
+    .map((item) => {
+      if (
+        item.node.type === "ExportNamedDeclaration" &&
+        item.source.kind === "value"
+      ) {
+        item.source.isNameAndNotType = 1;
+      } else {
+        item.source.isNameAndNotType = 0;
+      }
+
+      return item;
+    })
+    .sort((itemA, itemB) => {
+      // If both items are side effect imports, keep their original order.
+      return itemA.isSideEffectImport && itemB.isSideEffectImport
+        ? itemA.index - itemB.index
+        : // If one of the items is a side effect import, move it first.
+        itemA.isSideEffectImport
+        ? -1
+        : itemB.isSideEffectImport
+        ? 1
+        : sortBasedOnOrder(itemA, itemB, order) ||
+          // Compare the `from` part.
+
+          // The `.source` has been slightly tweaked. To stay fully deterministic,
+          // also sort on the original value.
+          compare(itemA.source.originalSource, itemB.source.originalSource) ||
+          // itemA.||
+          // Keep the original order if the sources are the same. It’s not worth
+          // trying to compare anything else, and you can use `import/no-duplicates`
+          // to get rid of the problem anyway.
+          itemA.index - itemB.index;
+    });
 }
 
 const collator = new Intl.Collator("en", {
